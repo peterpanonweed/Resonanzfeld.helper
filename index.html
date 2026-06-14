@@ -135,6 +135,21 @@
   .err code{font-size:11px;color:var(--sand-faint);word-break:break-all;display:block;margin-top:6px}
   .care{background:rgba(192,97,46,.1);border:1px solid rgba(192,97,46,.35);border-radius:12px;
     padding:13px 15px;font-size:13.5px;line-height:1.55;color:#e6c3a6;margin:4px 0 14px}
+
+  .mic svg{width:30px;height:30px;display:block}
+  .option.lead{border-color:var(--line-warm);background:rgba(244,200,92,.07)}
+  .lead-badge{display:inline-block;margin-left:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);border:1px solid var(--line-warm);border-radius:999px;padding:2px 7px;vertical-align:middle}
+  .vote-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .vote-reset{background:none;border:none;color:var(--sand-faint);font-size:12px;text-decoration:underline;
+    text-underline-offset:3px;cursor:pointer;font-family:inherit;padding:4px 0}
+  .vote-reset:hover{color:var(--gold)}
+  .mature{background:rgba(90,112,54,.1);border:1px solid rgba(90,112,54,.28);border-radius:14px;padding:14px;margin-top:10px}
+  .mature h5{font-family:'Fraunces',serif;font-weight:500;font-size:15px;margin-bottom:8px;color:#c3cf9e}
+  .mature .step{font-size:13.5px;line-height:1.5;color:var(--sand-dim);display:flex;gap:9px;margin:5px 0}
+  .mature .step .n{color:var(--moss);flex:0 0 auto;font-weight:600}
+  .mature .meta{font-size:12.5px;color:var(--sand-faint);line-height:1.5;margin-top:8px}
+  .mature .meta b{color:#c3cf9e;font-weight:600}
 </style>
 </head>
 <body>
@@ -154,10 +169,25 @@
     <section class="screen show" id="s-welcome">
       <h2>Willkommen im Feld.</h2>
       <p class="lead">Bringt eure Stimmen anonym ein. Das Feld lauscht, verdichtet, was lebendig ist – ohne Namen – und schlägt gemeinsame Wege vor. Ihr entscheidet.</p>
+      <div class="count">Die Gruppe: <b id="gstatus">noch nicht beschrieben</b></div>
+      <button class="btn btn-ghost" id="go-group">Die Gruppe beschreiben</button>
       <div class="count">Gesammelte Stimmen: <b id="vcount">0</b></div>
       <button class="btn btn-primary" id="go-contribute">Stimme einbringen</button>
       <button class="btn btn-ghost" id="go-read" disabled>Feld lesen</button>
       <button class="linkbtn" id="seed">Beispielstimmen einfügen (zum Ausprobieren)</button>
+    </section>
+
+    <!-- GROUP -->
+    <section class="screen" id="s-group">
+      <h2>Die Gruppe beschreiben.</h2>
+      <p class="lead">Haltet ein paar allgemeine, sachliche Aussagen über eure Gruppe fest – Dinge, die <b>alle</b> mittragen. Sie geben dem Feld den Rahmen, in dem es eure Stimmen liest.</p>
+      <textarea id="group-input" placeholder="z. B. „Wir sind eine Gemeinschaft von 14 Menschen und leben seit drei Jahren zusammen.“"></textarea>
+      <button class="btn btn-primary" id="add-group">Aussage hinzufügen</button>
+      <button class="linkbtn" id="group-seed">Beispiel einfügen</button>
+      <div class="voices" id="group-list"></div>
+      <label class="toggle" style="margin-top:18px"><input type="checkbox" id="group-agreed"> Diese Aussagen sind in der Gruppe abgestimmt und werden von allen getragen.</label>
+      <p class="privacy-note">Nur wenn dies bestätigt ist, fließt der Rahmen in die Analyse ein – so spiegelt das Feld allein, was die Gruppe gemeinsam über sich sagt.</p>
+      <button class="btn btn-ghost" id="group-done">Fertig</button>
     </section>
 
     <!-- CONTRIBUTE -->
@@ -165,7 +195,7 @@
       <h2>Was lebt in dir?</h2>
       <p class="lead">Was beschäftigt dich gerade im Zusammenleben? Sprich frei oder schreib – anonym, ohne deinen Namen.</p>
       <div class="mic-wrap" id="mic-wrap">
-        <button class="mic" id="mic" aria-label="Halten zum Sprechen">🎙</button>
+        <button class="mic" id="mic" aria-label="Halten zum Sprechen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="9" y1="21" x2="15" y2="21"/></svg></button>
         <div class="mic-hint" id="mic-hint">Halten zum Sprechen – loslassen, wenn du fertig bist.</div>
       </div>
       <textarea id="voice-input" placeholder="… oder hier tippen"></textarea>
@@ -203,6 +233,7 @@
       <div id="paths-loading" class="center" style="display:none"><div class="spinner"></div><p class="lead center">Wege werden gesucht …</p></div>
       <div id="paths-error"></div>
       <div id="paths"></div>
+      <button class="btn btn-ghost" id="paths-back">Zurück zum Feldbild</button>
       <button class="btn btn-ghost" id="paths-restart">Neues Feld beginnen</button>
     </section>
 
@@ -245,7 +276,7 @@ const store = (function(){
 })();
 
 /* ---------- state ---------- */
-const state = { voices:[], field:null, paths:null, votes:{} };
+const state = { voices:[], group:[], field:null, paths:null, votes:{}, mature:{} };
 const $ = id=>document.getElementById(id);
 
 /* ---------- ORB ENGINE ---------- */
@@ -366,6 +397,41 @@ $('add-voice').onclick=()=>{const t=$('voice-input').value.trim();if(!t)return;
   state.voices.push(t);$('voice-input').value='';renderVoices();};
 $('seed').onclick=()=>{state.voices=SAMPLE.slice();renderVoices();show('s-welcome');};
 
+/* ---------- group profile ---------- */
+const GROUP_SAMPLE=[
+ "Wir sind eine Gemeinschaft von etwa 14 Menschen und leben seit drei Jahren zusammen.",
+ "Wir teilen Haushalt, Kosten und viele Aufgaben.",
+ "Uns ist Offenheit wichtig, und wir wünschen uns einen achtsamen Umgang miteinander."
+];
+function loadGroup(){ try{ state.group=JSON.parse(store.get('rf_group')||'[]'); }catch(e){ state.group=[]; } }
+function groupAgreed(){ return store.get('rf_group_agreed')==='1'; }
+function groupContext(){
+  if(!groupAgreed()||!state.group.length) return '';
+  return '\n\nKontext zu dieser Gruppe (gemeinsam getragene, sachliche Aussagen der Gruppe – berücksichtige sie behutsam als Rahmen, ohne sie wörtlich zu zitieren):\n'+state.group.map(s=>'– '+s).join('\n');
+}
+function persistGroup(){ store.set('rf_group',JSON.stringify(state.group)); }
+function renderGroup(){
+  const list=$('group-list');list.innerHTML='';
+  state.group.forEach((s,i)=>{const d=document.createElement('div');d.className='voice';
+    d.innerHTML='<span class="tag">Über uns</span><span>'+escapeHtml(s)+'</span>';
+    const x=document.createElement('span');x.className='del';x.textContent='×';x.title='entfernen';
+    x.onclick=()=>{state.group.splice(i,1);persistGroup();renderGroup();updateGroupStatus();};
+    d.appendChild(x);list.appendChild(d);});
+  $('group-agreed').checked=groupAgreed();
+}
+function updateGroupStatus(){
+  const el=$('gstatus');if(!el)return;
+  if(state.group.length && groupAgreed()) el.textContent='beschrieben ✓';
+  else if(state.group.length) el.textContent='Entwurf, noch nicht bestätigt';
+  else el.textContent='noch nicht beschrieben';
+}
+$('go-group').onclick=()=>{renderGroup();show('s-group');stageSmall(false);};
+$('add-group').onclick=()=>{const t=$('group-input').value.trim();if(!t)return;
+  state.group.push(t);$('group-input').value='';persistGroup();renderGroup();updateGroupStatus();};
+$('group-seed').onclick=()=>{state.group=GROUP_SAMPLE.slice();persistGroup();store.set('rf_group_agreed','1');renderGroup();updateGroupStatus();};
+$('group-agreed').onchange=e=>{store.set('rf_group_agreed',e.target.checked?'1':'0');updateGroupStatus();};
+$('group-done').onclick=()=>{show('s-welcome');updateGroupStatus();};
+
 /* ---------- Claude call ---------- */
 async function callClaude(system,user,maxTokens){
   const key=store.get('rf_key');if(!key)throw{kind:'nokey'};
@@ -427,7 +493,7 @@ async function runAnalysis(){
   $('spinner').style.display='block';$('reading-text').textContent='Das Feld wird gelesen …';$('reading-error').innerHTML='';
   const user='Hier sind die anonymen Stimmen der Gruppe:\n\n'+state.voices.map(v=>'— '+v).join('\n');
   try{
-    const raw=await callClaude(SYS_FIELD,user,1024);
+    const raw=await callClaude(SYS_FIELD+groupContext(),user,1024);
     let data;try{data=parseJSON(raw);}catch(e){throw{kind:'parse',detail:raw.slice(0,300)};}
     state.field=data;state.paths=null;state.votes={};
     renderField();show('s-field');stageSmall(true);Orb.set('speak');Orb.speak(data.summary);
@@ -463,38 +529,86 @@ async function runPaths(){
   const tensions=(state.field.tensions||[]).slice(0,3);
   const user='Spannungsfelder der Gruppe:\n\n'+tensions.map(t=>'• '+t.title+' ('+t.poleA+' / '+t.poleB+'): '+t.text).join('\n');
   try{
-    const raw=await callClaude(SYS_PATHS,user,1500);
+    const raw=await callClaude(SYS_PATHS+groupContext(),user,1500);
     let data;try{data=parseJSON(raw);}catch(e){throw{kind:'parse',detail:raw.slice(0,300)};}
     state.paths=data;renderPaths();Orb.set('rest');
   }catch(e){
     $('paths-loading').style.display='none';showErr('paths-error',e,runPaths);Orb.set('rest');
   }finally{$('paths-loading').style.display='none';}
 }
+function leadingOption(ti){
+  const t=(state.paths.tensions||[])[ti]; if(!t||!t.options) return null;
+  let best=-1,bi=-1;
+  t.options.forEach((o,oi)=>{const v=state.votes[ti+'_'+oi]||0; if(v>best){best=v;bi=oi;}});
+  return best>0?t.options[bi]:null;
+}
 function renderPaths(){
   const wrap=$('paths');wrap.innerHTML='';
   (state.paths.tensions||[]).forEach((t,ti)=>{
+    const lead=leadingOption(ti);
     const sec=document.createElement('div');sec.className='card';
     let html='<h3>'+escapeHtml(t.title||'')+'</h3>';
     (t.options||[]).forEach((o,oi)=>{
       const id=ti+'_'+oi;if(!(id in state.votes))state.votes[id]=0;
-      html+='<div class="option"><h4>'+escapeHtml(o.title||'')+'</h4>'+
+      const isLead=lead && lead===o;
+      html+='<div class="option'+(isLead?' lead':'')+'"><h4>'+escapeHtml(o.title||'')+(isLead?'<span class="lead-badge">führt</span>':'')+'</h4>'+
         '<div class="odesc">'+escapeHtml(o.text||'')+'</div>'+
         (o.pro||[]).map(p=>'<div class="pc pro"><span class="s">+</span><span>'+escapeHtml(p)+'</span></div>').join('')+
         (o.con||[]).map(c=>'<div class="pc con"><span class="s">–</span><span>'+escapeHtml(c)+'</span></div>').join('')+
-        '<div class="vote"><span class="tally" id="tally_'+id+'"><b>'+state.votes[id]+'</b> Stimmen</span>'+
+        '<div class="vote"><span class="tally"><b>'+state.votes[id]+'</b> Stimmen</span>'+
         '<button data-vote="'+id+'">Dafür stimmen</button></div></div>';
     });
+    html+='<div class="vote-foot"><button class="vote-reset" data-reset="'+ti+'">Abstimmung zurücksetzen</button>'+
+      (lead?'<button class="vote-reset" data-mature="'+ti+'" style="color:var(--gold)">Führenden Weg zur Reife bringen →</button>':'<span></span>')+
+      '</div><div id="mature_'+ti+'"></div>';
     sec.innerHTML=html;wrap.appendChild(sec);
+    if(state.mature[ti]) renderMature(ti);
   });
   wrap.querySelectorAll('button[data-vote]').forEach(b=>{
-    b.onclick=()=>{const id=b.getAttribute('data-vote');state.votes[id]++;$('tally_'+id).innerHTML='<b>'+state.votes[id]+'</b> Stimmen';};
+    b.onclick=()=>{state.votes[b.getAttribute('data-vote')]++;renderPaths();};
   });
+  wrap.querySelectorAll('button[data-reset]').forEach(b=>{
+    b.onclick=()=>{const ti=b.getAttribute('data-reset');
+      (state.paths.tensions[ti].options||[]).forEach((o,oi)=>state.votes[ti+'_'+oi]=0);
+      delete state.mature[ti];renderPaths();};
+  });
+  wrap.querySelectorAll('button[data-mature]').forEach(b=>{
+    b.onclick=()=>runMature(+b.getAttribute('data-mature'));
+  });
+}
+
+/* ---------- maturation: develop the chosen path into a concrete agreement ---------- */
+const SYS_MATURE=
+`Du bist „das Resonanzfeld", ein neutraler Facilitator. Die Gruppe hat sich bei einem Spannungsfeld für einen Weg entschieden. Arbeite diesen Weg zu einem konkreten, umsetzbaren Vorschlag aus – als Angebot, das die Gruppe bestätigt. Entpersonalisiert (sprich von Rollen oder von allen, nie von Einzelpersonen). Konkret, warm, knapp.
+Antworte AUSSCHLIESSLICH mit gültigem JSON, kein Markdown, keine \`\`\`:
+{ "agreement":"1 Satz, der den Kern der Vereinbarung fasst", "steps":["konkreter Schritt","konkreter Schritt"], "pilot":"ein konkreter Vorschlag für eine Probezeit", "review":"wann und wie die Gruppe das überprüft" }
+Gib 2–4 steps. Halte alles knapp.`;
+
+async function runMature(ti){
+  const t=(state.paths.tensions||[])[ti]; if(!t) return;
+  const lead=leadingOption(ti); if(!lead) return;
+  $('mature_'+ti).innerHTML='<div class="spinner"></div>';
+  const user='Spannungsfeld: '+(t.title||'')+'\nGewählter Weg: '+(lead.title||'')+' – '+(lead.text||'');
+  try{
+    const raw=await callClaude(SYS_MATURE+groupContext(),user,900);
+    let d;try{d=parseJSON(raw);}catch(e){throw{kind:'parse',detail:raw.slice(0,200)};}
+    state.mature[ti]=d; renderMature(ti);
+  }catch(e){ showErr('mature_'+ti,e,()=>runMature(ti)); }
+}
+function renderMature(ti){
+  const d=state.mature[ti]; const cont=$('mature_'+ti); if(!cont)return; if(!d){cont.innerHTML='';return;}
+  cont.innerHTML='<div class="mature"><h5>'+escapeHtml(d.agreement||'Vereinbarung')+'</h5>'+
+    (d.steps||[]).map((s,i)=>'<div class="step"><span class="n">'+(i+1)+'</span><span>'+escapeHtml(s)+'</span></div>').join('')+
+    (d.pilot?'<div class="meta"><b>Probezeit:</b> '+escapeHtml(d.pilot)+'</div>':'')+
+    (d.review?'<div class="meta"><b>Überprüfung:</b> '+escapeHtml(d.review)+'</div>':'')+
+    '</div>';
 }
 
 /* ---------- wiring ---------- */
 $('go-read').onclick=runAnalysis;
 $('go-paths').onclick=()=>{if(state.paths){show('s-paths');stageSmall(true);renderPaths();Orb.set('rest');}else runPaths();};
-function restart(){state.field=null;state.paths=null;state.votes={};Orb.set('rest');show('s-welcome');stageSmall(false);renderVoices();}
+$('paths-back').onclick=()=>{show('s-field');stageSmall(true);Orb.set('rest');};
+function restart(){state.field=null;state.paths=null;state.votes={};state.mature={};Orb.set('rest');show('s-welcome');stageSmall(false);renderVoices();updateGroupStatus();}
 $('field-restart').onclick=restart;
 $('paths-restart').onclick=restart;
 
@@ -544,6 +658,8 @@ $('paths-restart').onclick=restart;
 })();
 
 /* ---------- init ---------- */
+loadGroup();
+updateGroupStatus();
 renderVoices();
 Orb.setVoice(store.get('rf_voice')!=='off');
 if(!store.get('rf_key')){/* gentle nudge on first open */ setTimeout(()=>{if(!store.get('rf_key'))$('gear').animate?$('gear').animate([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:700,iterations:2}):0;},600);}
