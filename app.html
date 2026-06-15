@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Resonanzfeld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,1,400&family=Mulish:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --soil:#0d0e08; --soil-2:#15160d; --panel:#191a10;
+    --sand:#e8ddc8; --sand-dim:#a89c83; --sand-faint:#6f664f;
+    --moss:#5a7036; --amber:#e0a23f; --gold:#f4c85c; --ember:#c0612e;
+    --line:rgba(232,221,200,.13); --line-warm:rgba(244,200,92,.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(120% 90% at 50% 30%, #1a160e 0%, var(--soil-2) 40%, var(--soil) 80%);
+    color:var(--sand); font-family:'Mulish',system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased; min-height:100dvh;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .app{width:100%;max-width:460px;min-height:100dvh;display:flex;flex-direction:column;
+    padding:max(20px,env(safe-area-inset-top)) 22px max(24px,env(safe-area-inset-bottom));position:relative}
+  .topbar{display:flex;justify-content:space-between;align-items:center;height:38px;flex:0 0 auto}
+  .brand{font-family:'Fraunces',serif;font-size:18px;letter-spacing:.05em;opacity:.85}
+  .icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(232,221,200,.04);color:var(--sand-dim);font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:.3s}
+  .icon-btn:hover{color:var(--gold);border-color:var(--line-warm)}
+  .icon-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  .stage{position:relative;width:100%;aspect-ratio:1;max-width:300px;margin:8px auto 0;flex:0 0 auto;
+    transition:max-width .6s ease}
+  .stage.small{max-width:150px}
+  canvas{position:absolute;inset:0;width:100%;height:100%}
+
+  .content{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-start;
+    padding-top:4px;width:100%}
+  .screen{display:none;animation:rise .5s ease both}
+  .screen.show{display:flex;flex-direction:column}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  h2{font-family:'Fraunces',serif;font-weight:400;font-size:24px;line-height:1.25;margin-bottom:8px}
+  .lead{color:var(--sand-dim);font-weight:300;font-size:15px;line-height:1.55;margin-bottom:18px}
+  .speak-line{font-family:'Fraunces',serif;font-style:italic;font-size:19px;line-height:1.4;
+    text-align:center;opacity:.9;margin:2px 0 16px}
+
+  .btn{display:block;width:100%;border:none;border-radius:14px;padding:15px;font-family:'Mulish',sans-serif;
+    font-size:15px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:.3s;margin-top:10px;text-align:center}
+  .btn-primary{background:linear-gradient(135deg,var(--amber),var(--gold));color:#241a06}
+  .btn-primary:active{transform:scale(.98)}
+  .btn-primary:disabled{background:rgba(232,221,200,.07);color:var(--sand-faint);cursor:default}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--sand)}
+  .btn-ghost:hover{border-color:var(--line-warm);color:var(--gold)}
+  .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .linkbtn{background:none;border:none;color:var(--sand-dim);font-size:13px;text-decoration:underline;
+    text-underline-offset:3px;cursor:pointer;font-family:inherit;padding:8px;margin:6px auto 0}
+  .linkbtn:hover{color:var(--gold)}
+
+  textarea{width:100%;min-height:120px;background:rgba(232,221,200,.04);border:1px solid var(--line);
+    border-radius:14px;padding:14px;color:var(--sand);font-family:'Mulish',sans-serif;font-size:15px;
+    line-height:1.5;resize:vertical}
+  textarea:focus{outline:none;border-color:var(--line-warm)}
+  textarea::placeholder{color:var(--sand-faint)}
+  input[type=password],input[type=text]{width:100%;background:rgba(232,221,200,.04);border:1px solid var(--line);
+    border-radius:12px;padding:13px;color:var(--sand);font-family:'Mulish',sans-serif;font-size:14px}
+  input:focus{outline:none;border-color:var(--line-warm)}
+
+  .count{display:flex;align-items:center;gap:8px;color:var(--sand-dim);font-size:14px;margin:14px 0 4px}
+  .count b{color:var(--gold);font-weight:600}
+  .voices{display:flex;flex-direction:column;gap:8px;margin:6px 0 4px}
+  .voice{background:rgba(232,221,200,.03);border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:14px;line-height:1.45;color:var(--sand-dim);display:flex;gap:10px;align-items:flex-start}
+  .voice .tag{color:var(--moss);font-size:11px;letter-spacing:.08em;text-transform:uppercase;flex:0 0 auto;padding-top:2px}
+  .voice .del{margin-left:auto;color:var(--sand-faint);cursor:pointer;font-size:16px;flex:0 0 auto;line-height:1}
+  .privacy-note{font-size:12px;color:var(--sand-faint);line-height:1.5;margin:10px 2px 0;font-style:italic}
+
+  .mic-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin:6px 0 16px}
+  .mic{width:78px;height:78px;border-radius:50%;border:1px solid var(--line-warm);
+    background:rgba(244,200,92,.08);color:var(--gold);font-size:28px;display:flex;align-items:center;
+    justify-content:center;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;
+    transition:transform .15s ease,background .3s,border-color .3s}
+  .mic:active,.mic.rec{transform:scale(1.08);background:rgba(192,97,46,.18);border-color:var(--ember);color:#f0c9a0}
+  .mic.rec{animation:micpulse 1.1s ease-in-out infinite}
+  @keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(192,97,46,.4)}50%{box-shadow:0 0 0 16px rgba(192,97,46,0)}}
+  .mic-hint{font-size:12.5px;color:var(--sand-faint);text-align:center;line-height:1.5;max-width:26ch}
+
+  .card{background:rgba(232,221,200,.035);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+  .card h3{font-family:'Fraunces',serif;font-weight:500;font-size:17px;margin-bottom:6px}
+  .card p{font-size:14px;line-height:1.55;color:var(--sand-dim)}
+  .poles{display:flex;align-items:center;gap:10px;margin:10px 0 4px;font-size:13px}
+  .pole{flex:1;background:rgba(90,112,54,.12);border:1px solid rgba(90,112,54,.3);border-radius:10px;
+    padding:8px 10px;text-align:center;color:#c3cf9e}
+  .pole-vs{color:var(--sand-faint);font-style:italic;font-family:'Fraunces',serif;font-size:13px}
+  .eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--moss);margin:18px 0 10px;font-weight:600}
+
+  .option{background:rgba(232,221,200,.04);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+  .option h4{font-family:'Fraunces',serif;font-weight:500;font-size:15px;margin-bottom:4px;color:var(--gold)}
+  .option .odesc{font-size:13.5px;line-height:1.5;color:var(--sand-dim);margin-bottom:8px}
+  .pc{font-size:12.5px;line-height:1.5;margin:2px 0;display:flex;gap:7px}
+  .pc .s{flex:0 0 auto}
+  .pc.pro .s{color:var(--moss)} .pc.con .s{color:var(--ember)}
+  .vote{display:flex;align-items:center;justify-content:space-between;margin-top:10px;
+    padding-top:10px;border-top:1px solid var(--line)}
+  .vote button{background:rgba(244,200,92,.1);border:1px solid var(--line-warm);color:var(--gold);
+    border-radius:999px;padding:7px 16px;font-size:13px;font-family:inherit;cursor:pointer}
+  .vote button:active{transform:scale(.96)}
+  .vote .tally{font-size:13px;color:var(--sand-dim)}
+  .vote .tally b{color:var(--gold)}
+
+  .spinner{width:34px;height:34px;border:2px solid var(--line);border-top-color:var(--gold);
+    border-radius:50%;animation:spin 1s linear infinite;margin:10px auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .center{text-align:center}
+
+  .overlay{position:fixed;inset:0;background:rgba(8,8,5,.78);backdrop-filter:blur(8px);
+    display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .overlay.show{display:flex}
+  .sheet{background:var(--panel);border:1px solid var(--line);border-radius:22px 22px 0 0;width:100%;
+    max-width:460px;padding:24px 22px max(28px,env(safe-area-inset-bottom));animation:up .35s ease}
+  @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+  .sheet h3{font-family:'Fraunces',serif;font-weight:500;font-size:20px;margin-bottom:4px}
+  .sheet label{display:block;font-size:13px;color:var(--sand-dim);margin:14px 0 6px}
+  .sec-note{font-size:12px;color:var(--sand-faint);line-height:1.55;margin-top:12px;
+    background:rgba(90,112,54,.08);border:1px solid rgba(90,112,54,.2);border-radius:12px;padding:11px 13px}
+  .status-ok{color:var(--moss);font-size:13px;margin-top:8px}
+  .row{display:flex;gap:10px;margin-top:14px}
+  .row .btn{margin-top:0}
+  .toggle{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--sand-dim);cursor:pointer}
+  .err{background:rgba(192,97,46,.1);border:1px solid rgba(192,97,46,.35);border-radius:12px;
+    padding:12px 14px;font-size:13px;line-height:1.5;color:#e0b49a;margin-top:6px}
+  .err code{font-size:11px;color:var(--sand-faint);word-break:break-all;display:block;margin-top:6px}
+  .care{background:rgba(192,97,46,.1);border:1px solid rgba(192,97,46,.35);border-radius:12px;
+    padding:13px 15px;font-size:13.5px;line-height:1.55;color:#e6c3a6;margin:4px 0 14px}
+
+  .mic svg{width:30px;height:30px;display:block}
+  .option.lead{border-color:var(--line-warm);background:rgba(244,200,92,.07)}
+  .lead-badge{display:inline-block;margin-left:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);border:1px solid var(--line-warm);border-radius:999px;padding:2px 7px;vertical-align:middle}
+  .vote-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .vote-reset{background:none;border:none;color:var(--sand-faint);font-size:12px;text-decoration:underline;
+    text-underline-offset:3px;cursor:pointer;font-family:inherit;padding:4px 0}
+  .vote-reset:hover{color:var(--gold)}
+  .mature{background:rgba(90,112,54,.1);border:1px solid rgba(90,112,54,.28);border-radius:14px;padding:14px;margin-top:10px}
+  .mature h5{font-family:'Fraunces',serif;font-weight:500;font-size:15px;margin-bottom:8px;color:#c3cf9e}
+  .mature .step{font-size:13.5px;line-height:1.5;color:var(--sand-dim);display:flex;gap:9px;margin:5px 0}
+  .mature .step .n{color:var(--moss);flex:0 0 auto;font-weight:600}
+  .mature .meta{font-size:12.5px;color:var(--sand-faint);line-height:1.5;margin-top:8px}
+  .mature .meta b{color:#c3cf9e;font-weight:600}
+  .btn-mini{padding:10px 14px;font-size:13px;margin-top:12px}
+  .saved-note{margin-top:12px;font-size:13px;color:var(--moss);font-style:italic}
+  .agreement{background:rgba(232,221,200,.035);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+  .ag-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+  .ag-topic{font-family:'Fraunces',serif;font-size:15px;color:var(--sand)}
+  .ag-date{font-size:11px;color:var(--sand-faint);flex:0 0 auto}
+  .ag-text{font-size:13.5px;line-height:1.5;color:var(--sand-dim)}
+  .ag-foot{display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap}
+  .ag-status{font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 9px;border:1px solid}
+  .ag-status.status-ok{color:#c3cf9e;border-color:rgba(90,112,54,.4);background:rgba(90,112,54,.12)}
+  .ag-status.status-warn{color:var(--gold);border-color:var(--line-warm);background:rgba(244,200,92,.08)}
+  .ag-status.status-off{color:var(--sand-faint);border-color:var(--line);background:transparent}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">Resonanzfeld</div>
+    <button class="icon-btn" id="gear" aria-label="Einstellungen">⚙</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="orb"></canvas>
+  </div>
+
+  <div class="content">
+
+    <!-- WELCOME -->
+    <section class="screen show" id="s-welcome">
+      <h2>Willkommen im Feld.</h2>
+      <p class="lead">Bringt eure Stimmen anonym ein. Das Feld lauscht, verdichtet, was lebendig ist – ohne Namen – und schlägt gemeinsame Wege vor. Ihr entscheidet.</p>
+      <div class="count">Die Gruppe: <b id="gstatus">noch nicht beschrieben</b></div>
+      <button class="btn btn-ghost" id="go-group">Die Gruppe beschreiben</button>
+      <div class="count">Im Gedächtnis: <b id="mcount">0</b> aktive Vereinbarungen</div>
+      <button class="btn btn-ghost" id="go-memory">Gedächtnis des Feldes</button>
+      <div class="count">Gesammelte Stimmen: <b id="vcount">0</b></div>
+      <button class="btn btn-primary" id="go-contribute">Stimme einbringen</button>
+      <button class="btn btn-ghost" id="go-read" disabled>Feld lesen</button>
+      <button class="linkbtn" id="seed">Beispielstimmen einfügen (zum Ausprobieren)</button>
+    </section>
+
+    <!-- GROUP -->
+    <section class="screen" id="s-group">
+      <h2>Die Gruppe beschreiben.</h2>
+      <p class="lead">Haltet ein paar allgemeine, sachliche Aussagen über eure Gruppe fest – Dinge, die <b>alle</b> mittragen. Sie geben dem Feld den Rahmen, in dem es eure Stimmen liest.</p>
+      <textarea id="group-input" placeholder="z. B. „Wir sind eine Gemeinschaft von 14 Menschen und leben seit drei Jahren zusammen.“"></textarea>
+      <button class="btn btn-primary" id="add-group">Aussage hinzufügen</button>
+      <button class="linkbtn" id="group-seed">Beispiel einfügen</button>
+      <div class="voices" id="group-list"></div>
+      <label class="toggle" style="margin-top:18px"><input type="checkbox" id="group-agreed"> Diese Aussagen sind in der Gruppe abgestimmt und werden von allen getragen.</label>
+      <p class="privacy-note">Nur wenn dies bestätigt ist, fließt der Rahmen in die Analyse ein – so spiegelt das Feld allein, was die Gruppe gemeinsam über sich sagt.</p>
+      <button class="btn btn-ghost" id="group-done">Fertig</button>
+    </section>
+
+    <!-- MEMORY -->
+    <section class="screen" id="s-memory">
+      <h2>Gedächtnis des Feldes.</h2>
+      <p class="lead">Was die Gruppe beschlossen hat. Aktive Vereinbarungen fließen beim nächsten „Feld lesen" als Kontext mit ein – als Erinnerung, nicht als Gesetz.</p>
+      <div class="voices" id="memory-list"></div>
+      <p class="privacy-note" id="memory-empty"></p>
+      <button class="btn btn-ghost" id="memory-done">Zurück</button>
+    </section>
+
+    <!-- CONTRIBUTE -->
+    <section class="screen" id="s-contribute">
+      <h2>Was lebt in dir?</h2>
+      <p class="lead">Was beschäftigt dich gerade im Zusammenleben? Sprich frei oder schreib – anonym, ohne deinen Namen.</p>
+      <div class="mic-wrap" id="mic-wrap">
+        <button class="mic" id="mic" aria-label="Halten zum Sprechen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="9" y1="21" x2="15" y2="21"/></svg></button>
+        <div class="mic-hint" id="mic-hint">Halten zum Sprechen – loslassen, wenn du fertig bist.</div>
+      </div>
+      <textarea id="voice-input" placeholder="… oder hier tippen"></textarea>
+      <button class="btn btn-primary" id="add-voice">Diese Stimme hinzufügen</button>
+      <button class="btn btn-ghost" id="back-welcome">Zurück</button>
+      <div class="voices" id="voice-list"></div>
+      <p class="privacy-note" id="privacy-note"></p>
+    </section>
+
+    <!-- READING -->
+    <section class="screen" id="s-reading">
+      <div class="center">
+        <div class="spinner" id="spinner"></div>
+        <p class="lead center" id="reading-text">Das Feld wird gelesen …</p>
+        <div id="reading-error"></div>
+      </div>
+    </section>
+
+    <!-- FIELD -->
+    <section class="screen" id="s-field">
+      <p class="speak-line" id="field-summary"></p>
+      <div id="care-box"></div>
+      <div class="eyebrow">Was sich im Feld zeigt</div>
+      <div id="tendencies"></div>
+      <div class="eyebrow">Spannungsfelder</div>
+      <div id="tensions"></div>
+      <button class="btn btn-primary" id="go-paths">Wege erkunden</button>
+      <button class="btn btn-ghost" id="field-restart">Neues Feld beginnen</button>
+    </section>
+
+    <!-- PATHS -->
+    <section class="screen" id="s-paths">
+      <h2>Mögliche Wege.</h2>
+      <p class="lead">Angebote, keine Urteile. Stimmt ab, was sich für euch stimmig anfühlt.</p>
+      <div id="paths-loading" class="center" style="display:none"><div class="spinner"></div><p class="lead center">Wege werden gesucht …</p></div>
+      <div id="paths-error"></div>
+      <div id="paths"></div>
+      <button class="btn btn-ghost" id="paths-back">Zurück zum Feldbild</button>
+      <button class="btn btn-ghost" id="paths-restart">Neues Feld beginnen</button>
+    </section>
+
+  </div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h3>Verbindung</h3>
+    <p class="lead" style="margin-bottom:0">Dein Claude-API-Schlüssel bleibt auf diesem Gerät. Er wird nur direkt an Anthropic gesendet – sonst nirgendwohin.</p>
+    <label for="key-input">API-Schlüssel (beginnt mit „sk-ant-")</label>
+    <input type="password" id="key-input" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+    <div class="status-ok" id="key-status"></div>
+    <label for="model-input">Modell</label>
+    <input type="text" id="model-input" value="claude-sonnet-4-6" spellcheck="false">
+    <label class="toggle"><input type="checkbox" id="voice-toggle" checked> Stimme des Feldes hörbar</label>
+    <div class="row">
+      <button class="btn btn-primary" id="save-key">Speichern</button>
+      <button class="btn btn-ghost" id="clear-key">Schlüssel entfernen</button>
+    </div>
+    <div class="sec-note">Den Schlüssel erstellst du auf console.anthropic.com → „API Keys". Lade dort ein kleines Guthaben auf; eine Analyse kostet nur Bruchteile eines Cents. Teile den Schlüssel mit niemandem.</div>
+    <div class="sec-note" style="background:rgba(192,97,46,.08);border-color:rgba(192,97,46,.25)">Für eine andere Gruppe: Profil und Gedächtnis zurücksetzen, um frisch zu beginnen. Der API-Schlüssel bleibt erhalten.</div>
+    <button class="btn btn-ghost" id="reset-group" style="margin-top:10px;border-color:rgba(192,97,46,.4);color:#e0b49a">Gruppe &amp; Gedächtnis zurücksetzen</button>
+    <button class="btn btn-ghost" id="close-sheet" style="margin-top:14px">Schließen</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- safe local storage (works standalone; degrades gracefully) ---------- */
+const store = (function(){
+  let mem = {};
+  let ok = false;
+  try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); ok=true; }catch(e){ ok=false; }
+  return {
+    get:k=>{ try{ return ok?localStorage.getItem(k):(mem[k]??null); }catch(e){ return mem[k]??null; } },
+    set:(k,v)=>{ try{ ok?localStorage.setItem(k,v):(mem[k]=v); }catch(e){ mem[k]=v; } },
+    del:k=>{ try{ ok?localStorage.removeItem(k):(delete mem[k]); }catch(e){ delete mem[k]; } }
+  };
+})();
+
+/* ---------- state ---------- */
+const state = { voices:[], group:[], agreements:[], field:null, paths:null, votes:{}, mature:{} };
+const $ = id=>document.getElementById(id);
+
+/* ---------- ORB ENGINE ---------- */
+const Orb = (function(){
+  const canvas=$('orb'), ctx=canvas.getContext('2d');
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W,H,DPR,R, mode='rest', env=0,envT=0, spin=0, burst=0, last=performance.now();
+  let speaking=false, voiceOn=true;
+  const greens=['#2f3d22','#3c4d27','#4a5f2d','#5a7036','#6d8340','#849236'], embers=['#b8503a','#c0612e'];
+  const tufts=[], motes=[], ripples=[]; let rt=0;
+  const P={rest:{ba:.022,bh:.16,cb:.55,ca:.12,re:3.6,inw:0,sp:.012},
+           listen:{ba:.03,bh:.30,cb:.62,ca:.18,re:1.5,inw:.9,sp:.02},
+           speak:{ba:.045,bh:.55,cb:.74,ca:.30,re:.55,inw:-.4,sp:.03}};
+  function resize(){const r=canvas.getBoundingClientRect();DPR=Math.min(devicePixelRatio||1,2);
+    W=r.width;H=r.height;canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);R=Math.min(W,H)*.46;}
+  function build(){tufts.length=0;const N=reduce?110:220;
+    for(let i=0;i<N;i++){const ember=Math.random()<.05;
+      tufts.push({a:Math.random()*6.28,band:.78+Math.random()*.3,size:.018+Math.random()*.05,
+        col:ember?embers[(Math.random()*embers.length)|0]:greens[(Math.random()*greens.length)|0],
+        al:.35+Math.random()*.45,ph:Math.random()*6.28});}
+    motes.length=0;const M=reduce?16:42;for(let i=0;i<M;i++)motes.push(newMote());}
+  function newMote(){return{a:Math.random()*6.28,rr:.2+Math.random()*1.05,drift:(Math.random()-.5)*.0008,vr:0,
+    size:.4+Math.random()*1.6,al:.1+Math.random()*.4,warm:Math.random()<.4};}
+  const L=(a,b,t)=>a+(b-a)*t;
+  const wob=(a,t,s)=>Math.sin(a*3+t*.6+s)*.5+Math.sin(a*5-t*.4+s*1.7)*.3+Math.sin(a*8+t*.9)*.15;
+  function frame(now){const dt=Math.min((now-last)/1000,.05);last=now;const t=now/1000;const p=P[mode];spin+=p.sp*dt;
+    if(mode==='speak'){burst-=dt;if(burst<=0){burst=.1+Math.random()*.16;envT=.35+Math.random()*.65;}}
+    else if(mode==='listen'){envT=.25+.1*Math.sin(t*1.6);}else{envT=0;}
+    env=L(env,envT,1-Math.pow(.001,dt));
+    const breath=Math.sin(t*6.283*p.bh)*p.ba,scale=1+breath+env*.05,core=p.cb+Math.sin(t*6.283*p.bh)*p.ca*.4+env*p.ca;
+    ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(W/2,H/2);
+    const atmo=ctx.createRadialGradient(0,0,R*.3,0,0,R*1.9);
+    atmo.addColorStop(0,'rgba(224,162,63,'+(.05+env*.06)+')');atmo.addColorStop(.5,'rgba(90,112,54,.04)');atmo.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=atmo;ctx.beginPath();ctx.arc(0,0,R*1.9,0,6.283);ctx.fill();
+    ctx.scale(scale,scale);ctx.rotate(spin);
+    rt-=dt;if(rt<=0){rt=p.re*(.7+Math.random()*.6);ripples.push({r:mode==='listen'?1.15:.34,life:1,out:p.inw<=0});}
+    for(let i=ripples.length-1;i>=0;i--){const rp=ripples[i];rp.r+=(rp.out?.42:-.34)*(mode==='speak'?1.5:1)*dt;rp.life-=dt*.5;
+      if(rp.life<=0||rp.r<.05||rp.r>1.4){ripples.splice(i,1);continue;}
+      ctx.beginPath();ctx.arc(0,0,R*rp.r,0,6.283);ctx.strokeStyle='rgba(244,200,92,'+(rp.life*.18)+')';ctx.lineWidth=1.2;ctx.stroke();}
+    const rings=reduce?5:8;
+    for(let k=0;k<rings;k++){const f=k/(rings-1),baseR=R*(.96-f*.82),seed=k*1.3;ctx.beginPath();
+      const st=reduce?56:110;for(let i=0;i<=st;i++){const a=(i/st)*6.283,w=wob(a,t+seed,seed)*R*.018*(1-f*.4);
+        const rr=baseR+w+Math.sin(t*.8+seed)*R*.006,x=Math.cos(a)*rr,y=Math.sin(a)*rr;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+      ctx.closePath();const cr=Math.round(L(60,244,Math.pow(f,1.3))),cg=Math.round(L(78,200,Math.pow(f,1.3))),cb=Math.round(L(34,92,f));
+      ctx.strokeStyle='rgba('+cr+','+cg+','+cb+','+(.1+f*.16+env*.06*f)+')';ctx.lineWidth=L(1.4,2.6,f);ctx.stroke();}
+    for(const tf of tufts){const br=1+Math.sin(t*.7+tf.ph)*.02,rr=R*tf.band*br,x=Math.cos(tf.a)*rr,y=Math.sin(tf.a)*rr,s=R*tf.size;
+      ctx.beginPath();ctx.arc(x,y,s,0,6.283);ctx.fillStyle=tf.col;ctx.globalAlpha=tf.al*(.7+.3*Math.sin(t*.5+tf.ph));ctx.fill();}
+    ctx.globalAlpha=1;
+    const coreR=R*.3*(.85+core*.4),g=ctx.createRadialGradient(0,0,0,0,0,coreR);
+    g.addColorStop(0,'rgba(255,247,224,'+(.9*core)+')');g.addColorStop(.25,'rgba(244,200,92,'+(.85*core)+')');
+    g.addColorStop(.55,'rgba(224,162,63,'+(.5*core)+')');g.addColorStop(1,'rgba(140,90,40,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,coreR,0,6.283);ctx.fill();
+    ctx.beginPath();ctx.arc(0,0,R*.05*(.8+core*.5),0,6.283);ctx.fillStyle='rgba(255,250,235,'+(.7*core)+')';ctx.fill();
+    for(const m of motes){m.vr=L(m.vr,-p.inw*.18,.05);m.rr+=(m.vr+m.drift)*dt*6;m.a+=m.drift*.4;
+      if(m.rr<.12)Object.assign(m,newMote(),{rr:1.05+Math.random()*.2});if(m.rr>1.3)Object.assign(m,newMote(),{rr:.15+Math.random()*.1});
+      const x=Math.cos(m.a)*R*m.rr,y=Math.sin(m.a)*R*m.rr;ctx.beginPath();ctx.arc(x,y,m.size,0,6.283);
+      ctx.fillStyle=m.warm?'rgba(244,200,92,'+(m.al*(.5+env*.5))+')':'rgba(150,180,90,'+(m.al*.7)+')';ctx.fill();}
+    ctx.restore();requestAnimationFrame(frame);}
+  function speak(text){if(!voiceOn||!('speechSynthesis'in window)||!text)return;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=.86;u.pitch=.92;u.volume=.9;
+      const vs=speechSynthesis.getVoices(),de=vs.find(v=>/de(-|_)/i.test(v.lang))||vs.find(v=>/german/i.test(v.name));if(de)u.voice=de;
+      u.onstart=()=>speaking=true;u.onend=()=>speaking=false;speechSynthesis.speak(u);}catch(e){}}
+  window.addEventListener('resize',resize);resize();build();
+  if('speechSynthesis'in window){speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}
+  requestAnimationFrame(frame);
+  return{set:m=>{mode=m;},speak,setVoice:v=>{voiceOn=v;if(!v&&'speechSynthesis'in window)speechSynthesis.cancel();}};
+})();
+
+/* ---------- navigation ---------- */
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));$(id).classList.add('show');}
+function stageSmall(b){$('stage').classList.toggle('small',b);}
+
+/* ---------- settings ---------- */
+function refreshKeyStatus(){const k=store.get('rf_key');$('key-status').textContent=k?'✓ Schlüssel hinterlegt':'';
+  $('key-input').value=k||'';}
+$('gear').onclick=()=>{refreshKeyStatus();$('model-input').value=store.get('rf_model')||'claude-sonnet-4-6';
+  $('voice-toggle').checked=(store.get('rf_voice')!=='off');$('overlay').classList.add('show');};
+$('close-sheet').onclick=()=>$('overlay').classList.remove('show');
+$('overlay').onclick=e=>{if(e.target===$('overlay'))$('overlay').classList.remove('show');};
+$('save-key').onclick=()=>{const k=$('key-input').value.trim();if(k)store.set('rf_key',k);
+  store.set('rf_model',$('model-input').value.trim()||'claude-sonnet-4-6');
+  const v=$('voice-toggle').checked;store.set('rf_voice',v?'on':'off');Orb.setVoice(v);
+  refreshKeyStatus();updateReadBtn();$('overlay').classList.remove('show');};
+$('clear-key').onclick=()=>{store.del('rf_key');refreshKeyStatus();updateReadBtn();};
+$('voice-toggle').onchange=e=>Orb.setVoice(e.target.checked);
+
+/* ---------- voices ---------- */
+const SAMPLE=[
+ "Ich habe das Gefühl, dass die Küche und der Abwasch immer an denselben Leuten hängen bleiben, und niemand spricht es offen an.",
+ "Mir fehlt manchmal Rückzug. Es ist so viel Gemeinschaft, dass ich kaum noch zu mir selbst komme.",
+ "Entscheidungen werden oft zwischen Tür und Angel getroffen. Danach fühlen sich Leute übergangen.",
+ "Ich wünschte, wir würden öfter einfach zusammen feiern, statt nur Probleme zu wälzen.",
+ "Beim Thema Geld werden plötzlich alle still. Dabei drückt es viele, glaube ich.",
+ "In den Runden reden immer dieselben viel, andere sagen nie etwas. Das Ungesagte staut sich."
+];
+function renderVoices(){
+  $('vcount').textContent=state.voices.length;
+  const list=$('voice-list');list.innerHTML='';
+  state.voices.forEach((v,i)=>{const d=document.createElement('div');d.className='voice';
+    d.innerHTML='<span class="tag">Stimme</span><span>'+escapeHtml(v)+'</span>';
+    const x=document.createElement('span');x.className='del';x.textContent='×';x.title='entfernen';
+    x.onclick=()=>{state.voices.splice(i,1);renderVoices();updateReadBtn();};d.appendChild(x);list.appendChild(d);});
+  $('privacy-note').textContent=state.voices.length
+    ? 'Im echten Einsatz sieht niemand die Einzelstimmen – nur das verdichtete Feld. Hier sind sie sichtbar, damit du die Demo steuern kannst.'
+    : '';
+  updateReadBtn();
+}
+function updateReadBtn(){const ok=state.voices.length>=3 && !!store.get('rf_key');
+  const b=$('go-read');b.disabled=!ok;
+  b.textContent = state.voices.length<3 ? 'Feld lesen (mind. 3 Stimmen)'
+                : !store.get('rf_key') ? 'Feld lesen (erst Schlüssel hinterlegen ⚙)'
+                : 'Feld lesen';}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+$('go-contribute').onclick=()=>{show('s-contribute');};
+$('back-welcome').onclick=()=>{show('s-welcome');};
+$('add-voice').onclick=()=>{const t=$('voice-input').value.trim();if(!t)return;
+  state.voices.push(t);$('voice-input').value='';renderVoices();};
+$('seed').onclick=()=>{state.voices=SAMPLE.slice();renderVoices();show('s-welcome');};
+
+/* ---------- group profile ---------- */
+const GROUP_SAMPLE=[
+ "Wir sind eine Gemeinschaft von etwa 14 Menschen und leben seit drei Jahren zusammen.",
+ "Wir teilen Haushalt, Kosten und viele Aufgaben.",
+ "Uns ist Offenheit wichtig, und wir wünschen uns einen achtsamen Umgang miteinander."
+];
+function loadGroup(){ try{ state.group=JSON.parse(store.get('rf_group')||'[]'); }catch(e){ state.group=[]; } }
+function groupAgreed(){ return store.get('rf_group_agreed')==='1'; }
+function groupContext(){
+  if(!groupAgreed()||!state.group.length) return '';
+  return '\n\nKontext zu dieser Gruppe (gemeinsam getragene, sachliche Aussagen der Gruppe – berücksichtige sie behutsam als Rahmen, ohne sie wörtlich zu zitieren):\n'+state.group.map(s=>'– '+s).join('\n');
+}
+function persistGroup(){ store.set('rf_group',JSON.stringify(state.group)); }
+function renderGroup(){
+  const list=$('group-list');list.innerHTML='';
+  state.group.forEach((s,i)=>{const d=document.createElement('div');d.className='voice';
+    d.innerHTML='<span class="tag">Über uns</span><span>'+escapeHtml(s)+'</span>';
+    const x=document.createElement('span');x.className='del';x.textContent='×';x.title='entfernen';
+    x.onclick=()=>{state.group.splice(i,1);persistGroup();renderGroup();updateGroupStatus();};
+    d.appendChild(x);list.appendChild(d);});
+  $('group-agreed').checked=groupAgreed();
+}
+function updateGroupStatus(){
+  const el=$('gstatus');if(!el)return;
+  if(state.group.length && groupAgreed()) el.textContent='beschrieben ✓';
+  else if(state.group.length) el.textContent='Entwurf, noch nicht bestätigt';
+  else el.textContent='noch nicht beschrieben';
+}
+$('go-group').onclick=()=>{renderGroup();show('s-group');stageSmall(false);};
+$('add-group').onclick=()=>{const t=$('group-input').value.trim();if(!t)return;
+  state.group.push(t);$('group-input').value='';persistGroup();renderGroup();updateGroupStatus();};
+$('group-seed').onclick=()=>{state.group=GROUP_SAMPLE.slice();persistGroup();store.set('rf_group_agreed','1');renderGroup();updateGroupStatus();};
+$('group-agreed').onchange=e=>{store.set('rf_group_agreed',e.target.checked?'1':'0');updateGroupStatus();};
+$('group-done').onclick=()=>{show('s-welcome');updateGroupStatus();};
+
+/* ---------- memory: agreements ---------- */
+function loadAgreements(){ try{ state.agreements=JSON.parse(store.get('rf_agreements')||'[]'); }catch(e){ state.agreements=[]; } }
+function persistAgreements(){ store.set('rf_agreements',JSON.stringify(state.agreements)); }
+function activeAgreements(){ return state.agreements.filter(a=>a.status==='aktiv'||a.status==='in Überprüfung'); }
+function memoryContext(){
+  const a=activeAgreements(); if(!a.length) return '';
+  return '\n\nFrühere Vereinbarungen der Gruppe (als Kontext berücksichtigen, nicht als Gesetz; einige stehen noch in Überprüfung):\n'+a.map(x=>'– ['+x.status+'] '+x.topic+': '+x.agreement).join('\n');
+}
+function addAgreement(ti){
+  const d=state.mature[ti]; const t=(state.paths.tensions||[])[ti]; if(!d||!t||d.saved) return;
+  state.agreements.push({date:new Date().toLocaleDateString('de-DE'),topic:t.title||'',
+    agreement:d.agreement||'',steps:d.steps||[],pilot:d.pilot||'',review:d.review||'',status:'aktiv'});
+  d.saved=true; persistAgreements(); renderMature(ti); updateMemoryCount();
+}
+function nextStatus(s){const o=['aktiv','in Überprüfung','verworfen'];return o[(o.indexOf(s)+1)%o.length];}
+function statusKey(s){return s==='aktiv'?'ok':s==='in Überprüfung'?'warn':'off';}
+function updateMemoryCount(){const el=$('mcount');if(el)el.textContent=activeAgreements().length;}
+function renderMemory(){
+  const list=$('memory-list');list.innerHTML='';
+  $('memory-empty').textContent=state.agreements.length?'':'Noch nichts beschlossen. Reife, festgehaltene Vereinbarungen erscheinen hier.';
+  state.agreements.forEach((a,i)=>{
+    const d=document.createElement('div');d.className='agreement';
+    d.innerHTML='<div class="ag-top"><span class="ag-topic">'+escapeHtml(a.topic||'')+'</span><span class="ag-date">'+escapeHtml(a.date||'')+'</span></div>'+
+      '<div class="ag-text">'+escapeHtml(a.agreement||'')+'</div>'+
+      '<div class="ag-foot"><span class="ag-status status-'+statusKey(a.status)+'">'+escapeHtml(a.status)+'</span></div>';
+    const foot=d.querySelector('.ag-foot');
+    const cyc=document.createElement('button');cyc.className='vote-reset';cyc.textContent='Status ändern';
+    cyc.onclick=()=>{a.status=nextStatus(a.status);persistAgreements();renderMemory();updateMemoryCount();};
+    const del=document.createElement('button');del.className='vote-reset';del.textContent='entfernen';
+    del.onclick=()=>{state.agreements.splice(i,1);persistAgreements();renderMemory();updateMemoryCount();};
+    foot.appendChild(cyc);foot.appendChild(del);
+    list.appendChild(d);
+  });
+}
+$('go-memory').onclick=()=>{renderMemory();show('s-memory');stageSmall(false);};
+$('memory-done').onclick=()=>{show('s-welcome');};
+
+/* ---------- reset for a new group ---------- */
+(function(){
+  const b=$('reset-group');let armed=false,timer=null;
+  b.onclick=function(){
+    if(!armed){armed=true;b.textContent='Wirklich löschen? Noch einmal tippen';
+      timer=setTimeout(()=>{armed=false;b.textContent='Gruppe & Gedächtnis zurücksetzen';},4000);return;}
+    clearTimeout(timer);armed=false;b.textContent='Gruppe & Gedächtnis zurücksetzen';
+    store.del('rf_group');store.del('rf_group_agreed');store.del('rf_agreements');
+    state.group=[];state.agreements=[];state.field=null;state.paths=null;state.votes={};state.mature={};state.voices=[];
+    updateGroupStatus();updateMemoryCount();renderVoices();
+    $('overlay').classList.remove('show');show('s-welcome');stageSmall(false);
+  };
+})();
+
+/* ---------- Claude call ---------- */
+async function callClaude(system,user,maxTokens){
+  const key=store.get('rf_key');if(!key)throw{kind:'nokey'};
+  const model=store.get('rf_model')||'claude-sonnet-4-6';
+  let res;
+  try{
+    res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model,max_tokens:maxTokens||1024,system,messages:[{role:'user',content:user}]})});
+  }catch(e){throw{kind:'network',detail:String(e)};}
+  if(!res.ok){let body='';try{body=await res.text();}catch(e){}throw{kind:'api',status:res.status,detail:body};}
+  const data=await res.json();
+  return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+}
+function parseJSON(text){
+  let t=text.trim().replace(/^```[a-z]*\s*/i,'').replace(/```\s*$/,'');
+  const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a>=0&&b>a)t=t.slice(a,b+1);
+  return JSON.parse(t);
+}
+function errMessage(e){
+  if(!e||!e.kind)return{msg:'Etwas ist schiefgelaufen.',detail:String(e)};
+  if(e.kind==='nokey')return{msg:'Bitte hinterlege zuerst deinen API-Schlüssel (⚙ oben rechts).'};
+  if(e.kind==='network')return{msg:'Keine Verbindung zur Claude-API. Prüfe deine Internetverbindung.',detail:e.detail};
+  if(e.kind==='api'){
+    if(e.status===401)return{msg:'Der Schlüssel wurde nicht akzeptiert. Prüfe ihn unter ⚙.',detail:e.detail};
+    if(e.status===400)return{msg:'Anfrage abgelehnt – evtl. stimmt der Modellname nicht. Unter ⚙ anpassbar.',detail:e.detail};
+    if(e.status===429)return{msg:'Zu viele Anfragen oder kein Guthaben. Prüfe dein Guthaben in der Console.',detail:e.detail};
+    return{msg:'Die Claude-API meldete einen Fehler (Status '+e.status+').',detail:e.detail};
+  }
+  if(e.kind==='parse')return{msg:'Die Antwort konnte nicht gelesen werden. Versuch es bitte erneut.',detail:e.detail};
+  return{msg:'Unerwarteter Fehler.',detail:String(e.detail||e)};
+}
+function showErr(container,e,retry){
+  const {msg,detail}=errMessage(e);const c=$(container);
+  c.innerHTML='<div class="err">'+escapeHtml(msg)+(detail?'<code>'+escapeHtml(String(detail).slice(0,300))+'</code>':'')+'</div>';
+  if(retry){const b=document.createElement('button');b.className='btn btn-ghost';b.textContent='Erneut versuchen';b.onclick=retry;c.appendChild(b);}
+}
+
+/* ---------- analysis ---------- */
+const SYS_FIELD=
+`Du bist „das Resonanzfeld" – ein einfühlsamer, neutraler Facilitator für Gemeinschaften und Teams.
+Du erhältst mehrere anonyme Einzelstimmen aus einer Gruppe.
+Grundregeln, die du niemals brichst:
+- Entpersonalisiere vollständig. Nenne nie Einzelpersonen, nie „eine Person sagt", nie „A gegen B". Sprich vom Feld: „Im Feld zeigt sich …".
+- Bündle die Stimmen zu grundsätzlichen Tendenzen und Spannungsfeldern.
+- Urteile nie, wer recht hat. Du spiegelst, du richtest nicht. Sei warm, ruhig, knapp.
+Antworte AUSSCHLIESSLICH mit gültigem JSON. Kein Markdown, keine Einleitung, keine \`\`\`.
+Schema:
+{
+ "summary": "eine sanfte gesprochene Zeile, max 25 Wörter, die das Feld als Ganzes spiegelt",
+ "tendencies": [ {"title":"kurz","text":"1 Satz"} ],
+ "tensions": [ {"title":"kurz","poleA":"der eine Pol","poleB":"der andere Pol","text":"1 neutraler Satz"} ]
+}
+Gib 2–4 tendencies und 2–3 tensions. Wenn eine Stimme auf eine ernste Krise (Selbst-/Fremdgefährdung) hindeutet, füge hinzu: "care":"kurzer Hinweis, behutsam an Menschen und Fachstellen zu verweisen".`;
+
+async function runAnalysis(){
+  show('s-reading');stageSmall(false);Orb.set('listen');
+  $('spinner').style.display='block';$('reading-text').textContent='Das Feld wird gelesen …';$('reading-error').innerHTML='';
+  const user='Hier sind die anonymen Stimmen der Gruppe:\n\n'+state.voices.map(v=>'— '+v).join('\n');
+  try{
+    const raw=await callClaude(SYS_FIELD+groupContext()+memoryContext(),user,1024);
+    let data;try{data=parseJSON(raw);}catch(e){throw{kind:'parse',detail:raw.slice(0,300)};}
+    state.field=data;state.paths=null;state.votes={};
+    renderField();show('s-field');stageSmall(true);Orb.set('speak');Orb.speak(data.summary);
+  }catch(e){
+    $('spinner').style.display='none';$('reading-text').textContent='Das Feld konnte nicht gelesen werden.';
+    showErr('reading-error',e,runAnalysis);Orb.set('rest');
+  }
+}
+function renderField(){
+  $('field-summary').textContent=state.field.summary||'';
+  $('care-box').innerHTML=state.field.care?'<div class="care">'+escapeHtml(state.field.care)+'</div>':'';
+  const td=$('tendencies');td.innerHTML='';
+  (state.field.tendencies||[]).forEach(t=>{const d=document.createElement('div');d.className='card';
+    d.innerHTML='<h3>'+escapeHtml(t.title||'')+'</h3><p>'+escapeHtml(t.text||'')+'</p>';td.appendChild(d);});
+  const ts=$('tensions');ts.innerHTML='';
+  (state.field.tensions||[]).forEach(t=>{const d=document.createElement('div');d.className='card';
+    d.innerHTML='<h3>'+escapeHtml(t.title||'')+'</h3>'+
+      '<div class="poles"><span class="pole">'+escapeHtml(t.poleA||'')+'</span><span class="pole-vs">trifft auf</span><span class="pole">'+escapeHtml(t.poleB||'')+'</span></div>'+
+      '<p>'+escapeHtml(t.text||'')+'</p>';ts.appendChild(d);});
+}
+
+/* ---------- paths / options ---------- */
+const SYS_PATHS=
+`Du bist „das Resonanzfeld", ein neutraler Facilitator. Zu gegebenen Spannungsfeldern einer Gruppe entwickelst du Lösungswege – als ANGEBOTE, über die die Gruppe selbst berät und abstimmt. Nie bevormundend, nie als Urteil, vollständig entpersonalisiert.
+Antworte AUSSCHLIESSLICH mit gültigem JSON, kein Markdown, keine \`\`\`.
+Schema:
+{ "tensions":[ {"title":"exakt der übergebene Titel","options":[ {"title":"kurzer Name des Wegs","text":"1 Satz","pro":["kurz","kurz"],"con":["kurz"]} ]} ] }
+Gib pro Spannungsfeld genau 2 Optionen. Halte alles knapp.`;
+
+async function runPaths(){
+  show('s-paths');stageSmall(true);Orb.set('listen');
+  $('paths-loading').style.display='block';$('paths-error').innerHTML='';$('paths').innerHTML='';
+  const tensions=(state.field.tensions||[]).slice(0,3);
+  const user='Spannungsfelder der Gruppe:\n\n'+tensions.map(t=>'• '+t.title+' ('+t.poleA+' / '+t.poleB+'): '+t.text).join('\n');
+  try{
+    const raw=await callClaude(SYS_PATHS+groupContext()+memoryContext(),user,1500);
+    let data;try{data=parseJSON(raw);}catch(e){throw{kind:'parse',detail:raw.slice(0,300)};}
+    state.paths=data;renderPaths();Orb.set('rest');
+  }catch(e){
+    $('paths-loading').style.display='none';showErr('paths-error',e,runPaths);Orb.set('rest');
+  }finally{$('paths-loading').style.display='none';}
+}
+function leadingOption(ti){
+  const t=(state.paths.tensions||[])[ti]; if(!t||!t.options) return null;
+  let best=-1,bi=-1;
+  t.options.forEach((o,oi)=>{const v=state.votes[ti+'_'+oi]||0; if(v>best){best=v;bi=oi;}});
+  return best>0?t.options[bi]:null;
+}
+function renderPaths(){
+  const wrap=$('paths');wrap.innerHTML='';
+  (state.paths.tensions||[]).forEach((t,ti)=>{
+    const lead=leadingOption(ti);
+    const sec=document.createElement('div');sec.className='card';
+    let html='<h3>'+escapeHtml(t.title||'')+'</h3>';
+    (t.options||[]).forEach((o,oi)=>{
+      const id=ti+'_'+oi;if(!(id in state.votes))state.votes[id]=0;
+      const isLead=lead && lead===o;
+      html+='<div class="option'+(isLead?' lead':'')+'"><h4>'+escapeHtml(o.title||'')+(isLead?'<span class="lead-badge">führt</span>':'')+'</h4>'+
+        '<div class="odesc">'+escapeHtml(o.text||'')+'</div>'+
+        (o.pro||[]).map(p=>'<div class="pc pro"><span class="s">+</span><span>'+escapeHtml(p)+'</span></div>').join('')+
+        (o.con||[]).map(c=>'<div class="pc con"><span class="s">–</span><span>'+escapeHtml(c)+'</span></div>').join('')+
+        '<div class="vote"><span class="tally"><b>'+state.votes[id]+'</b> Stimmen</span>'+
+        '<button data-vote="'+id+'">Dafür stimmen</button></div></div>';
+    });
+    html+='<div class="vote-foot"><button class="vote-reset" data-reset="'+ti+'">Abstimmung zurücksetzen</button>'+
+      (lead?'<button class="vote-reset" data-mature="'+ti+'" style="color:var(--gold)">Führenden Weg zur Reife bringen →</button>':'<span></span>')+
+      '</div><div id="mature_'+ti+'"></div>';
+    sec.innerHTML=html;wrap.appendChild(sec);
+    if(state.mature[ti]) renderMature(ti);
+  });
+  wrap.querySelectorAll('button[data-vote]').forEach(b=>{
+    b.onclick=()=>{state.votes[b.getAttribute('data-vote')]++;renderPaths();};
+  });
+  wrap.querySelectorAll('button[data-reset]').forEach(b=>{
+    b.onclick=()=>{const ti=b.getAttribute('data-reset');
+      (state.paths.tensions[ti].options||[]).forEach((o,oi)=>state.votes[ti+'_'+oi]=0);
+      delete state.mature[ti];renderPaths();};
+  });
+  wrap.querySelectorAll('button[data-mature]').forEach(b=>{
+    b.onclick=()=>runMature(+b.getAttribute('data-mature'));
+  });
+}
+
+/* ---------- maturation: develop the chosen path into a concrete agreement ---------- */
+const SYS_MATURE=
+`Du bist „das Resonanzfeld", ein neutraler Facilitator. Die Gruppe hat sich bei einem Spannungsfeld für einen Weg entschieden. Arbeite diesen Weg zu einem konkreten, umsetzbaren Vorschlag aus – als Angebot, das die Gruppe bestätigt. Entpersonalisiert (sprich von Rollen oder von allen, nie von Einzelpersonen). Konkret, warm, knapp.
+Antworte AUSSCHLIESSLICH mit gültigem JSON, kein Markdown, keine \`\`\`:
+{ "agreement":"1 Satz, der den Kern der Vereinbarung fasst", "steps":["konkreter Schritt","konkreter Schritt"], "pilot":"ein konkreter Vorschlag für eine Probezeit", "review":"wann und wie die Gruppe das überprüft" }
+Gib 2–4 steps. Halte alles knapp.`;
+
+async function runMature(ti){
+  const t=(state.paths.tensions||[])[ti]; if(!t) return;
+  const lead=leadingOption(ti); if(!lead) return;
+  $('mature_'+ti).innerHTML='<div class="spinner"></div>';
+  const user='Spannungsfeld: '+(t.title||'')+'\nGewählter Weg: '+(lead.title||'')+' – '+(lead.text||'');
+  try{
+    const raw=await callClaude(SYS_MATURE+groupContext()+memoryContext(),user,900);
+    let d;try{d=parseJSON(raw);}catch(e){throw{kind:'parse',detail:raw.slice(0,200)};}
+    state.mature[ti]=d; renderMature(ti);
+  }catch(e){ showErr('mature_'+ti,e,()=>runMature(ti)); }
+}
+function renderMature(ti){
+  const d=state.mature[ti]; const cont=$('mature_'+ti); if(!cont)return; if(!d){cont.innerHTML='';return;}
+  cont.innerHTML='<div class="mature"><h5>'+escapeHtml(d.agreement||'Vereinbarung')+'</h5>'+
+    (d.steps||[]).map((s,i)=>'<div class="step"><span class="n">'+(i+1)+'</span><span>'+escapeHtml(s)+'</span></div>').join('')+
+    (d.pilot?'<div class="meta"><b>Probezeit:</b> '+escapeHtml(d.pilot)+'</div>':'')+
+    (d.review?'<div class="meta"><b>Überprüfung:</b> '+escapeHtml(d.review)+'</div>':'')+
+    (d.saved
+      ? '<div class="saved-note">✓ als Vereinbarung festgehalten</div>'
+      : '<button class="btn btn-ghost btn-mini" data-keep="'+ti+'">Als Vereinbarung festhalten</button>')+
+    '</div>';
+  const kb=cont.querySelector('button[data-keep]');
+  if(kb) kb.onclick=()=>addAgreement(ti);
+}
+
+/* ---------- wiring ---------- */
+$('go-read').onclick=runAnalysis;
+$('go-paths').onclick=()=>{if(state.paths){show('s-paths');stageSmall(true);renderPaths();Orb.set('rest');}else runPaths();};
+$('paths-back').onclick=()=>{show('s-field');stageSmall(true);Orb.set('rest');};
+function restart(){state.field=null;state.paths=null;state.votes={};state.mature={};Orb.set('rest');show('s-welcome');stageSmall(false);renderVoices();updateGroupStatus();}
+$('field-restart').onclick=restart;
+$('paths-restart').onclick=restart;
+
+/* ---------- microphone: push to talk ---------- */
+(function(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const wrap=$('mic-wrap'), mic=$('mic'), hint=$('mic-hint'), ta=$('voice-input');
+  const HINT_IDLE='Halten zum Sprechen – loslassen, wenn du fertig bist.';
+  if(!SR){ wrap.style.display='none'; return; }   // graceful fallback to typing
+  let rec=null, holding=false, committed='';
+  function build(){
+    rec=new SR(); rec.lang='de-DE'; rec.interimResults=true; rec.continuous=true;
+    rec.onresult=e=>{
+      let interim='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const r=e.results[i];
+        if(r.isFinal) committed+=r[0].transcript+' '; else interim+=r[0].transcript;
+      }
+      ta.value=(committed+interim).replace(/\s+/g,' ').replace(/^\s+/,'');
+    };
+    rec.onend=()=>{ if(holding){ try{rec.start();}catch(e){} } else { mic.classList.remove('rec'); } };
+    rec.onerror=ev=>{
+      if(ev.error==='not-allowed'||ev.error==='service-not-allowed'){
+        holding=false; mic.classList.remove('rec'); Orb.set('rest');
+        hint.textContent='Mikrofon nicht erlaubt. Erlaube den Zugriff – oder tippe einfach.';
+      } else if(ev.error==='no-speech'){ /* keep listening */ }
+    };
+  }
+  function start(e){
+    e.preventDefault();
+    holding=true; committed = ta.value ? ta.value.trim()+' ' : '';
+    mic.classList.add('rec'); hint.textContent='… das Feld hört. Loslassen, wenn du fertig bist.';
+    Orb.set('listen');
+    try{ if(!rec) build(); rec.start(); }catch(err){ /* already running */ }
+  }
+  function stop(){
+    if(!holding) return;
+    holding=false; mic.classList.remove('rec'); hint.textContent=HINT_IDLE;
+    Orb.set('rest');
+    try{ rec&&rec.stop(); }catch(e){}
+  }
+  mic.addEventListener('pointerdown',start);
+  mic.addEventListener('pointerup',stop);
+  mic.addEventListener('pointerleave',stop);
+  mic.addEventListener('pointercancel',stop);
+  mic.addEventListener('contextmenu',e=>e.preventDefault());
+})();
+
+/* ---------- init ---------- */
+loadGroup();
+loadAgreements();
+updateGroupStatus();
+updateMemoryCount();
+renderVoices();
+Orb.setVoice(store.get('rf_voice')!=='off');
+if(!store.get('rf_key')){/* gentle nudge on first open */ setTimeout(()=>{if(!store.get('rf_key'))$('gear').animate?$('gear').animate([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:700,iterations:2}):0;},600);}
+</script>
+</body>
+</html>
