@@ -273,7 +273,6 @@
     <div class="status-ok" id="key-status"></div>
     <label for="model-input">Modell</label>
     <input type="text" id="model-input" value="claude-sonnet-4-6" spellcheck="false">
-    <label class="toggle"><input type="checkbox" id="voice-toggle" checked> Stimme des Feldes hörbar</label>
     <div class="row">
       <button class="btn btn-primary" id="save-key">Speichern</button>
       <button class="btn btn-ghost" id="clear-key">Schlüssel entfernen</button>
@@ -309,7 +308,6 @@ const Orb = (function(){
   const canvas=$('orb'), ctx=canvas.getContext('2d');
   const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W,H,DPR,R, mode='rest', env=0,envT=0, spin=0, burst=0, last=performance.now();
-  let speaking=false, voiceOn=true;
   const greens=['#2f3d22','#3c4d27','#4a5f2d','#5a7036','#6d8340','#849236'], embers=['#b8503a','#c0612e'];
   const tufts=[], motes=[], ripples=[]; let rt=0;
   const P={rest:{ba:.022,bh:.16,cb:.55,ca:.12,re:3.6,inw:0,sp:.012},
@@ -360,14 +358,9 @@ const Orb = (function(){
       const x=Math.cos(m.a)*R*m.rr,y=Math.sin(m.a)*R*m.rr;ctx.beginPath();ctx.arc(x,y,m.size,0,6.283);
       ctx.fillStyle=m.warm?'rgba(244,200,92,'+(m.al*(.5+env*.5))+')':'rgba(150,180,90,'+(m.al*.7)+')';ctx.fill();}
     ctx.restore();requestAnimationFrame(frame);}
-  function speak(text){if(!voiceOn||!('speechSynthesis'in window)||!text)return;
-    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=.86;u.pitch=.92;u.volume=.9;
-      const vs=speechSynthesis.getVoices(),de=vs.find(v=>/de(-|_)/i.test(v.lang))||vs.find(v=>/german/i.test(v.name));if(de)u.voice=de;
-      u.onstart=()=>speaking=true;u.onend=()=>speaking=false;speechSynthesis.speak(u);}catch(e){}}
   window.addEventListener('resize',resize);resize();build();
-  if('speechSynthesis'in window){speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}
   requestAnimationFrame(frame);
-  return{set:m=>{mode=m;},speak,setVoice:v=>{voiceOn=v;if(!v&&'speechSynthesis'in window)speechSynthesis.cancel();}};
+  return{set:m=>{mode=m;}};
 })();
 
 /* ---------- navigation ---------- */
@@ -378,15 +371,13 @@ function stageSmall(b){$('stage').classList.toggle('small',b);}
 function refreshKeyStatus(){const k=store.get('rf_key');$('key-status').textContent=k?'✓ Schlüssel hinterlegt':'';
   $('key-input').value=k||'';}
 $('gear').onclick=()=>{refreshKeyStatus();$('model-input').value=store.get('rf_model')||'claude-sonnet-4-6';
-  $('voice-toggle').checked=(store.get('rf_voice')!=='off');$('overlay').classList.add('show');};
+  $('overlay').classList.add('show');};
 $('close-sheet').onclick=()=>$('overlay').classList.remove('show');
 $('overlay').onclick=e=>{if(e.target===$('overlay'))$('overlay').classList.remove('show');};
 $('save-key').onclick=()=>{const k=$('key-input').value.trim();if(k)store.set('rf_key',k);
   store.set('rf_model',$('model-input').value.trim()||'claude-sonnet-4-6');
-  const v=$('voice-toggle').checked;store.set('rf_voice',v?'on':'off');Orb.setVoice(v);
   refreshKeyStatus();updateReadBtn();$('overlay').classList.remove('show');};
 $('clear-key').onclick=()=>{store.del('rf_key');refreshKeyStatus();updateReadBtn();};
-$('voice-toggle').onchange=e=>Orb.setVoice(e.target.checked);
 
 /* ---------- voices ---------- */
 const SAMPLE=[
@@ -395,7 +386,31 @@ const SAMPLE=[
  "Entscheidungen werden oft zwischen Tür und Angel getroffen. Danach fühlen sich Leute übergangen.",
  "Ich wünschte, wir würden öfter einfach zusammen feiern, statt nur Probleme zu wälzen.",
  "Beim Thema Geld werden plötzlich alle still. Dabei drückt es viele, glaube ich.",
- "In den Runden reden immer dieselben viel, andere sagen nie etwas. Das Ungesagte staut sich."
+ "In den Runden reden immer dieselben viel, andere sagen nie etwas. Das Ungesagte staut sich.",
+ "Manche zahlen jeden Monat denselben Beitrag, verdienen aber sehr unterschiedlich. Ob das wirklich fair ist, traut sich keiner zu fragen.",
+ "Mich beschäftigt, was mit unserem gemeinsamen Vermögen passiert, wenn jemand gehen will. Wir haben das nie geklärt.",
+ "Seit Monaten warte ich auf ein eigenes Zimmer, während andere viel Platz haben. Ich weiß nicht, an wen ich mich damit wenden soll.",
+ "Das Haus müsste dringend renoviert werden, aber jede größere Entscheidung darüber verschieben wir immer wieder.",
+ "Beim Essen gibt es stille Erwartungen – vegan, zuckerfrei, regional. Wer das anders sieht, fühlt sich schnell falsch.",
+ "Ich koche oft für alle, aber selten kocht jemand für mich. Das sage ich nicht, weil es kleinlich wirkt.",
+ "Die Morgenmeditation ist offiziell freiwillig. Trotzdem wird genau geschaut, wer kommt und wer nicht.",
+ "Ich spüre eine Erwartung, der Lehrerin in allem zuzustimmen. Eigene Zweifel zu äußern fühlt sich fast wie Verrat an.",
+ "Es gibt eine unausgesprochene Rangordnung – die Gründer:innen haben mehr Gewicht als alle, die später dazukamen.",
+ "Als Neue habe ich das Gefühl, mich erst lange beweisen zu müssen, bevor meine Stimme wirklich zählt.",
+ "Ständig sind Gäste da. Ich liebe Offenheit, aber manchmal ist unser Zuhause kaum noch unser eigenes.",
+ "Die Kinder werden von allen mitgetragen – schön gedacht, aber bei der Erziehung ziehen wir oft in verschiedene Richtungen.",
+ "Die einen stehen vor Sonnenaufgang auf, die anderen leben nachts. Über Ruhezeiten haben wir nie wirklich gesprochen.",
+ "Als ein Paar bei uns sich getrennt hat, hat das die ganze Gruppe gespalten, und wir tun bis heute so, als wäre nichts.",
+ "Vieles wird zu zweit in der Küche besprochen, aber nie im großen Kreis. So entstehen Lager.",
+ "Wenn es konkret wird, hüllen wir Konflikte schnell in schöne spirituelle Worte – und lösen sie damit nicht.",
+ "Wer auswärts arbeitet, ist seltener da und bekommt subtil zu spüren, weniger dazuzugehören.",
+ "Manche sind mit ganzem Herzen hier, andere halten sich ein Hintertürchen offen. Diese Schieflage spüre ich täglich.",
+ "Ich frage mich, wer eigentlich für uns da ist, wenn jemand ernsthaft krank oder alt wird. Darüber reden wir nie.",
+ "Ich kümmere mich um vieles im Hintergrund, das niemand sieht. Manchmal wünschte ich mir einfach ein Dankeschön.",
+ "Wir reden viel über Nachhaltigkeit, aber im Alltag sind die Ansprüche sehr unterschiedlich. Das sorgt für leisen Unmut.",
+ "Bei manchen Zeremonien sind pflanzliche Medizinen dabei. Nicht alle fühlen sich damit wohl, sagen es aber nicht laut.",
+ "Wir sind so harmoniebedürftig, dass echte Reibung kaum Platz hat. Dabei bräuchte es sie manchmal.",
+ "Beim gemeinsamen Essen liegen ständig Handys auf dem Tisch. Von echter Präsenz sprechen wir – leben sie aber selten.",
 ];
 function renderVoices(){
   $('vcount').textContent=state.voices.length;
@@ -420,7 +435,7 @@ $('go-contribute').onclick=()=>{show('s-contribute');};
 $('back-welcome').onclick=()=>{show('s-welcome');};
 $('add-voice').onclick=()=>{const t=$('voice-input').value.trim();if(!t)return;
   state.voices.push(t);$('voice-input').value='';renderVoices();};
-$('seed').onclick=()=>{state.voices=SAMPLE.slice();renderVoices();show('s-welcome');};
+$('seed').onclick=()=>{state.voices=[...SAMPLE].sort(()=>Math.random()-0.5).slice(0,6);renderVoices();show('s-welcome');};
 
 /* ---------- group profile ---------- */
 const GROUP_SAMPLE=[
@@ -572,7 +587,7 @@ async function runAnalysis(){
     const raw=await callClaude(SYS_FIELD+groupContext()+memoryContext(),user,1024);
     let data;try{data=parseJSON(raw);}catch(e){throw{kind:'parse',detail:raw.slice(0,300)};}
     state.field=data;state.paths=null;state.votes={};
-    renderField();show('s-field');stageSmall(true);Orb.set('speak');Orb.speak(data.summary);
+    renderField();show('s-field');stageSmall(true);Orb.set('speak');
   }catch(e){
     $('spinner').style.display='none';$('reading-text').textContent='Das Feld konnte nicht gelesen werden.';
     showErr('reading-error',e,runAnalysis);Orb.set('rest');
@@ -744,7 +759,6 @@ loadAgreements();
 updateGroupStatus();
 updateMemoryCount();
 renderVoices();
-Orb.setVoice(store.get('rf_voice')!=='off');
 if(!store.get('rf_key')){/* gentle nudge on first open */ setTimeout(()=>{if(!store.get('rf_key'))$('gear').animate?$('gear').animate([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:700,iterations:2}):0;},600);}
 </script>
 </body>
